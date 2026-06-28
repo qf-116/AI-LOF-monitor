@@ -1,0 +1,61 @@
+name: LOF溢价监控
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  schedule:
+    - cron: '30 3 * * 1-5'   # 北京时间 11:30 盘中预警
+    - cron: '30 7 * * 1-5'   # 北京时间 15:30 每日汇总
+  workflow_dispatch:
+  repository_dispatch:
+    types: [manual_trigger]
+
+jobs:
+  alert:
+    if: github.event.schedule == '30 3 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install requests
+
+      - name: 盘中预警
+        env:
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+        run: python main.py --alert
+
+  daily:
+    if: github.event.schedule == '30 7 * * 1-5' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install requests
+
+      - name: 每日汇总
+        env:
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+        run: python main.py --daily
+
+      - name: 提交历史数据
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "自动更新历史数据 $(date '+%Y-%m-%d %H:%M')"
+          git push
