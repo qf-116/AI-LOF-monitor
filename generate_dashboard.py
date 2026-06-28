@@ -47,7 +47,10 @@ def get_dashboard_data():
 
 
 def generate_html(latest, history, names):
-    update_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # 使用北京时间（UTC+8），兼容本地Windows和GitHub Actions(UTC)
+    from datetime import timezone, timedelta
+    bj_tz = timezone(timedelta(hours=8))
+    update_time = datetime.now(bj_tz).strftime("%Y-%m-%d %H:%M")
 
     # 构建历史趋势数据（仅取前10只溢价最高的基金）
     top_codes = [r["full_code"] for r in latest[:10]]

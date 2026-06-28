@@ -220,8 +220,11 @@ def main():
 
     load_dotenv()
     sendkey = get_serverchan_key()
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    # 使用北京时间（UTC+8），兼容本地Windows和GitHub Actions(UTC)
+    from datetime import timezone, timedelta
+    bj_tz = timezone(timedelta(hours=8))
+    now_str = datetime.now(bj_tz).strftime("%Y-%m-%d %H:%M")
+    date_str = datetime.now(bj_tz).strftime("%Y-%m-%d")
 
     # ── 测试模式 ──
     if args.test:
