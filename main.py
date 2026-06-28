@@ -260,6 +260,7 @@ def main():
     # ── 预警模式 ──
     if args.alert:
         print(f"=== [预警模式] LOF溢价监控 {now_str} ===")
+        save_premium_batch(rows, date_str)
         alert_rows = check_alerts(rows, ALERT_THRESHOLD, date_str)
         if alert_rows:
             title, content = build_alert_message(alert_rows, now_str)
@@ -278,7 +279,7 @@ def main():
             print(f"  当前无基金溢价率超过 {ALERT_THRESHOLD}%，无需预警")
         return
 
-    # ── 每日汇总模式（默认） ──
+    # ── 每日汇总模式（默认，无参数时也执行） ──
     print(f"=== LOF溢价监控 {now_str} ===")
     save_premium_batch(rows, date_str)
 

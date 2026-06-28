@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOF溢价监控</title>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@11/highcharts.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background:#0f172a; color:#e2e8f0; padding:20px; }
+.header { text-align:center; margin-bottom:24px; }
+.header h1 { font-size:28px; color:#f8fafc; }
+.header .time { color:#94a3b8; margin-top:4px; }
+.stats { display:flex; gap:16px; justify-content:center; margin-bottom:24px; flex-wrap:wrap; }
+.stat-card { background:#1e293b; border-radius:12px; padding:16px 24px; text-align:center; min-width:140px; }
+.stat-card .value { font-size:28px; font-weight:700; }
+.stat-card .label { color:#94a3b8; font-size:13px; margin-top:4px; }
+.stat-card .value.red { color:#ef4444; }
+.stat-card .value.green { color:#22c55e; }
+.stat-card .value.yellow { color:#eab308; }
+.chart-container { background:#1e293b; border-radius:12px; padding:16px; margin-bottom:24px; }
+table { width:100%; border-collapse:collapse; background:#1e293b; border-radius:12px; overflow:hidden; }
+th { background:#334155; padding:12px 8px; text-align:center; font-size:13px; color:#94a3b8; }
+td { padding:10px 8px; text-align:center; font-size:14px; border-top:1px solid #334155; }
+tr:hover { background:#334155; }
+td small { color:#64748b; font-size:11px; }
+.high { color:#ef4444; font-weight:700; }
+.positive { color:#f87171; }
+.negative { color:#4ade80; }
+.open { color:#4ade80; }
+.limited { color:#fbbf24; }
+.closed { color:#f87171; }
+footer { text-align:center; color:#64748b; margin-top:24px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>LOF 基金溢价监控</h1>
+    <div class="time">更新时间：2026-06-28 14:10</div>
+</div>
+
+<div class="stats">
+    <div class="stat-card"><div class="value red">3</div><div class="label">套利机会</div></div>
+    <div class="stat-card"><div class="value yellow">8</div><div class="label">溢价但暂停申购</div></div>
+    <div class="stat-card"><div class="value red">+32.02%</div><div class="label">最高溢价率</div></div>
+    <div class="stat-card"><div class="value green">35</div><div class="label">监控基金数</div></div>
+</div>
+
+<div class="chart-container">
+    <div id="trend-chart" style="height:360px;"></div>
+</div>
+
+<table>
+<thead>
+<tr><th>#</th><th>基金</th><th>现价</th><th>涨跌</th><th>EST</th><th>溢价率</th><th>状态</th><th>限额</th></tr>
+</thead>
+<tbody>
+
+            <tr>
+                <td>1</td>
+                <td>全球芯片LOF<br><small>SH501225</small></td>
+                <td>4.604</td>
+                <td>-4.08%</td>
+                <td>3.487</td>
+                <td class="high">+32.02%</td>
+                <td class="closed">暂停申购</td>
+                <td>100元</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>国投白银LOF<br><small>SZ161226</small></td>
+                <td>1.742</td>
+                <td>-1.91%</td>
+                <td>1.622</td>
+                <td class="high">+7.39%</td>
+                <td class="closed">暂停申购</td>
+                <td>100元</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>纳斯达克100LOF<br><small>SZ161130</small></td>
+                <td>4.601</td>
+                <td>-2.77%</td>
+                <td>4.410</td>
+                <td class="high">+4.34%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>标普信息科技LOF<br><small>SZ161128</small></td>
+                <td>6.649</td>
+                <td>-3.29%</td>
+                <td>6.400</td>
+                <td class="high">+3.89%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>南方原油LOF<br><small>SH501018</small></td>
+                <td>1.512</td>
+                <td>+1.89%</td>
+                <td>1.482</td>
+                <td class="high">+2.05%</td>
+                <td class="closed">暂停申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>原油LOF易方达<br><small>SZ161129</small></td>
+                <td>1.431</td>
+                <td>+1.20%</td>
+                <td>1.406</td>
+                <td class="positive">+1.78%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>标普500LOF<br><small>SZ161125</small></td>
+                <td>3.087</td>
+                <td>-1.50%</td>
+                <td>3.043</td>
+                <td class="positive">+1.46%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>嘉实原油LOF<br><small>SZ160723</small></td>
+                <td>1.715</td>
+                <td>+1.48%</td>
+                <td>1.696</td>
+                <td class="positive">+1.10%</td>
+                <td class="closed">暂停申购</td>
+                <td>5元</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>沪深300LOF<br><small>SH501043</small></td>
+                <td>1.673</td>
+                <td>-2.16%</td>
+                <td>1.665</td>
+                <td class="positive">+0.48%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td>恒生国企LOF<br><small>SZ161831</small></td>
+                <td>0.648</td>
+                <td>-1.82%</td>
+                <td>0.647</td>
+                <td class="positive">+0.12%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td>恒生LOF<br><small>SZ164705</small></td>
+                <td>1.025</td>
+                <td>-0.97%</td>
+                <td>1.024</td>
+                <td class="positive">+0.08%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td>H股LOF<br><small>SZ160717</small></td>
+                <td>0.646</td>
+                <td>-1.97%</td>
+                <td>0.646</td>
+                <td class="negative">0.00%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>13</td>
+                <td>恒生指数LOF<br><small>SZ160924</small></td>
+                <td>0.906</td>
+                <td>-1.31%</td>
+                <td>0.907</td>
+                <td class="negative">-0.09%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>14</td>
+                <td>港股小盘LOF<br><small>SZ161124</small></td>
+                <td>0.892</td>
+                <td>-2.41%</td>
+                <td>0.895</td>
+                <td class="negative">-0.31%</td>
+                <td class="limited">限制大额</td>
+                <td>3000元</td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td>全球油气能源LOF<br><small>SZ163208</small></td>
+                <td>1.194</td>
+                <td>+1.36%</td>
+                <td>1.201</td>
+                <td class="negative">-0.58%</td>
+                <td class="closed">暂停申购</td>
+                <td>500元</td>
+            </tr>
+            <tr>
+                <td>16</td>
+                <td>恒生指数基金LOF<br><small>SH501302</small></td>
+                <td>1.026</td>
+                <td>-2.10%</td>
+                <td>1.033</td>
+                <td class="negative">-0.65%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>17</td>
+                <td>抗通胀LOF<br><small>SZ161815</small></td>
+                <td>0.977</td>
+                <td>+1.56%</td>
+                <td>0.984</td>
+                <td class="negative">-0.72%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>18</td>
+                <td>中概互联网LOF<br><small>SZ164906</small></td>
+                <td>0.846</td>
+                <td>-2.08%</td>
+                <td>0.852</td>
+                <td class="negative">-0.74%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>19</td>
+                <td>香港银行LOF<br><small>SH501025</small></td>
+                <td>1.681</td>
+                <td>-1.00%</td>
+                <td>1.694</td>
+                <td class="negative">-0.74%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>20</td>
+                <td>美元债LOF<br><small>SH501300</small></td>
+                <td>0.940</td>
+                <td>-0.11%</td>
+                <td>0.948</td>
+                <td class="negative">-0.84%</td>
+                <td class="limited">限制大额</td>
+                <td>5000万</td>
+            </tr>
+            <tr>
+                <td>21</td>
+                <td>石油基金LOF<br><small>SZ160416</small></td>
+                <td>1.914</td>
+                <td>+0.74%</td>
+                <td>1.934</td>
+                <td class="negative">-1.03%</td>
+                <td class="closed">暂停申购</td>
+                <td>2元</td>
+            </tr>
+            <tr>
+                <td>22</td>
+                <td>印度基金LOF<br><small>SZ164824</small></td>
+                <td>1.305</td>
+                <td>-0.76%</td>
+                <td>1.320</td>
+                <td class="negative">-1.10%</td>
+                <td class="limited">限制大额</td>
+                <td>50万</td>
+            </tr>
+            <tr>
+                <td>23</td>
+                <td>国泰商品LOF<br><small>SZ160216</small></td>
+                <td>0.627</td>
+                <td>+1.79%</td>
+                <td>0.637</td>
+                <td class="negative">-1.59%</td>
+                <td class="limited">限制大额</td>
+                <td>1000元</td>
+            </tr>
+            <tr>
+                <td>24</td>
+                <td>石油LOF<br><small>SZ162719</small></td>
+                <td>2.497</td>
+                <td>+1.79%</td>
+                <td>2.540</td>
+                <td class="negative">-1.68%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>25</td>
+                <td>华宝油气LOF<br><small>SZ162411</small></td>
+                <td>0.811</td>
+                <td>+2.14%</td>
+                <td>0.826</td>
+                <td class="negative">-1.84%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>26</td>
+                <td>黄金主题LOF<br><small>SZ161116</small></td>
+                <td>1.496</td>
+                <td>+1.15%</td>
+                <td>1.524</td>
+                <td class="negative">-1.87%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>27</td>
+                <td>美国消费LOF<br><small>SZ162415</small></td>
+                <td>2.784</td>
+                <td>-1.49%</td>
+                <td>2.840</td>
+                <td class="negative">-1.96%</td>
+                <td class="limited">限制大额</td>
+                <td>1000元</td>
+            </tr>
+            <tr>
+                <td>28</td>
+                <td>黄金LOF<br><small>SZ164701</small></td>
+                <td>1.564</td>
+                <td>+1.03%</td>
+                <td>1.596</td>
+                <td class="negative">-2.00%</td>
+                <td class="limited">限制大额</td>
+                <td>500元</td>
+            </tr>
+            <tr>
+                <td>29</td>
+                <td>标普生物科技LOF<br><small>SZ161127</small></td>
+                <td>2.029</td>
+                <td>+1.50%</td>
+                <td>2.074</td>
+                <td class="negative">-2.18%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+            <tr>
+                <td>30</td>
+                <td>中信保诚商品LOF<br><small>SZ165513</small></td>
+                <td>0.946</td>
+                <td>+0.64%</td>
+                <td>0.967</td>
+                <td class="negative">-2.22%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>31</td>
+                <td>美国REIT精选LOF<br><small>SZ160140</small></td>
+                <td>1.443</td>
+                <td>+0.63%</td>
+                <td>1.476</td>
+                <td class="negative">-2.23%</td>
+                <td class="open">正常申购</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>32</td>
+                <td>海外科技LOF<br><small>SH501312</small></td>
+                <td>2.288</td>
+                <td>-2.39%</td>
+                <td>2.341</td>
+                <td class="negative">-2.26%</td>
+                <td class="limited">限制大额</td>
+                <td>20元</td>
+            </tr>
+            <tr>
+                <td>33</td>
+                <td>港美互联网LOF<br><small>SZ160644</small></td>
+                <td>2.079</td>
+                <td>-3.75%</td>
+                <td>2.128</td>
+                <td class="negative">-2.30%</td>
+                <td class="closed">暂停申购</td>
+                <td>1万</td>
+            </tr>
+            <tr>
+                <td>34</td>
+                <td>嘉实黄金LOF<br><small>SZ160719</small></td>
+                <td>1.791</td>
+                <td>+0.90%</td>
+                <td>1.834</td>
+                <td class="negative">-2.35%</td>
+                <td class="closed">暂停申购</td>
+                <td>5元</td>
+            </tr>
+            <tr>
+                <td>35</td>
+                <td>标普医疗保健LOF<br><small>SZ161126</small></td>
+                <td>1.903</td>
+                <td>+1.55%</td>
+                <td>1.962</td>
+                <td class="negative">-3.00%</td>
+                <td class="closed">暂停申购</td>
+                <td>10元</td>
+            </tr>
+</tbody>
+</table>
+
+<footer>数据来源：palmmicro + 天天基金 · 自动更新 · 仅供参考，不构成投资建议</footer>
+
+<script>
+Highcharts.chart('trend-chart', {
+    chart: { backgroundColor: 'transparent', style: { color: '#e2e8f0' } },
+    title: { text: '溢价率趋势（近30天 Top10）', style: { color: '#e2e8f0' } },
+    xAxis: { type:'category', labels: { style:{ color:'#94a3b8' }, rotation: -45 }, tickInterval: 5 },
+    yAxis: { title:{ text:'溢价率(%)', style:{ color:'#94a3b8' } }, labels:{ style:{ color:'#94a3b8' } },
+             plotLines:[{ value:0, color:'#475569', width:1, dashStyle:'Dash' }] },
+    legend: { itemStyle:{ color:'#e2e8f0' } },
+    tooltip: { valueSuffix: '%' },
+    series: [{"name": "\u5168\u7403\u82af\u7247LOF", "data": [["2026-06-28", 32.02]], "color": "#ef4444"}, {"name": "\u56fd\u6295\u767d\u94f6LOF", "data": [["2026-06-28", 7.39]], "color": "#f97316"}, {"name": "\u7eb3\u65af\u8fbe\u514b100LOF", "data": [["2026-06-28", 4.34]], "color": "#eab308"}, {"name": "\u6807\u666e\u4fe1\u606f\u79d1\u6280LOF", "data": [["2026-06-28", 3.89]], "color": "#22c55e"}, {"name": "\u5357\u65b9\u539f\u6cb9LOF", "data": [["2026-06-28", 2.05]], "color": "#3b82f6"}, {"name": "\u539f\u6cb9LOF\u6613\u65b9\u8fbe", "data": [["2026-06-28", 1.78]], "color": "#8b5cf6"}, {"name": "\u6807\u666e500LOF", "data": [["2026-06-28", 1.46]], "color": "#ec4899"}, {"name": "\u5609\u5b9e\u539f\u6cb9LOF", "data": [["2026-06-28", 1.1]], "color": "#14b8a6"}, {"name": "\u6caa\u6df1300LOF", "data": [["2026-06-28", 0.48]], "color": "#6366f1"}, {"name": "\u6052\u751f\u56fd\u4f01LOF", "data": [["2026-06-28", 0.12]], "color": "#f43f5e"}]
+});
+</script>
+</body>
+</html>

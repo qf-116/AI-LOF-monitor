@@ -1,8 +1,5 @@
 name: LOF溢价监控
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   schedule:
     - cron: '30 3 * * 1-5'   # 北京时间 11:30 盘中预警
@@ -10,6 +7,9 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types: [manual_trigger]
+
+permissions:
+  contents: write
 
 jobs:
   alert:
@@ -47,15 +47,15 @@ jobs:
       - name: 安装依赖
         run: pip install requests
 
-      - name: 每日汇总
+      - name: 每日汇总+生成看板
         env:
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
-        run: python main.py --daily
+        run: python main.py --daily && python generate_dashboard.py
 
-      - name: 提交历史数据
+      - name: 提交历史数据和看板
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
-          git diff --cached --quiet || git commit -m "自动更新历史数据 $(date '+%Y-%m-%d %H:%M')"
+          git add data/ docs/
+          git diff --cached --quiet || git commit -m "自动更新历史数据和看板 $(date '+%Y-%m-%d %H:%M')"
           git push
