@@ -6,8 +6,17 @@ from config import FUNDS, ALERT_THRESHOLD
 from db import get_today_alerted
 
 
-def merge(premium_map, price_map, quota_map):
-    """合并三个数据源，计算溢价率，按溢价率降序排列"""
+def merge(premium_map, price_map, quota_map, fundgz_map=None):
+    """合并多个数据源，计算溢价率，按溢价率降序排列
+
+    Args:
+        premium_map: palmmicro数据（主源）
+        price_map: 新浪行情数据
+        quota_map: 天天基金申购状态数据
+        fundgz_map: 天天基金fundgz估算净值数据（备用源，可选）
+
+    当palmmicro某基金est/premium缺失时，尝试用fundgz数据补充。
+    """
     rows = []
     for full_code, code6, name in FUNDS:
         p = price_map.get(full_code, {})
@@ -25,8 +34,21 @@ def merge(premium_map, price_map, quota_map):
         change = p.get("change")
         est = e.get("est")
         premium = e.get("premium")
+        est_date = e.get("est_date")
+        ref_premium = e.get("ref_premium")
+
+        # palmmicro缺失时，尝试用fundgz备用源补充
+        if (est is None or premium is None) and fundgz_map:
+            fg = fundgz_map.get(full_code, {})
+            if est is None and fg.get("est") is not None:
+                est = fg["est"]
+                if est_date is None:
+                    est_date = fg.get("est_date")
+
+        # 如果仍无premium但有price和est，自行计算
         if premium is None and price and est:
             premium = round((price - est) / est * 100, 2)
+
         rows.append(
             {
                 "full_code": full_code,
@@ -36,8 +58,8 @@ def merge(premium_map, price_map, quota_map):
                 "change": change,
                 "est": est,
                 "premium": premium,
-                "est_date": e.get("est_date"),
-                "ref_premium": e.get("ref_premium"),
+                "est_date": est_date,
+                "ref_premium": ref_premium,
                 "status": q["status"],
                 "status_text": q["status_text"],
                 "quota": q["quota"],

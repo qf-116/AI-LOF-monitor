@@ -209,6 +209,19 @@ def main():
         print("无最新数据，跳过看板生成")
         return
 
+    # 数据质量保护：如果所有基金的EST和溢价率都缺失，不覆盖已有看板
+    est_all_missing = all(r.get("est") is None for r in latest)
+    prem_all_missing = all(r.get("premium") is None for r in latest)
+    if est_all_missing and prem_all_missing:
+        print("[WARNING] 所有基金的EST和溢价率数据均缺失，跳过看板更新（保留上一版）")
+        return
+
+    # 部分缺失时给出警告但仍生成
+    est_missing_count = sum(1 for r in latest if r.get("est") is None)
+    prem_missing_count = sum(1 for r in latest if r.get("premium") is None)
+    if est_missing_count > 0 or prem_missing_count > 0:
+        print(f"[WARNING] 部分数据缺失：EST缺失{est_missing_count}只，溢价率缺失{prem_missing_count}只")
+
     html = generate_html(latest, history, names)
     output_path = os.path.join(DOCS_DIR, "index.html")
     with open(output_path, "w", encoding="utf-8") as f:

@@ -11,58 +11,69 @@ from config import FUNDS, HEADERS
 
 
 def fetch_premium():
-    """从palmmicro获取所有基金的EST数据（官方EST、EST日期、官方溢价、参考EST溢价）"""
+    """从palmmicro获取所有基金的EST数据（官方EST、EST日期、官方溢价、参考EST溢价）
+
+    最多重试3次（间隔3/6/9秒），防止GitHub Actions环境偶发网络失败
+    """
     url = "https://palmmicro.com/woody/res/lofcn.php?sort=premium"
-    print("获取溢价率（主列表页）...")
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        r.encoding = "utf-8"
-        html = r.text
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        print(f"获取溢价率（主列表页）...{f' (第{attempt}次重试)' if attempt > 1 else ''}")
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            r.encoding = "utf-8"
+            html = r.text
 
-        m = re.search(r'id="estimationtable".*?<tbody>(.*?)</tbody>', html, re.S)
-        if not m:
-            print("  未找到 estimationtable")
-            return {}
+            m = re.search(r'id="estimationtable".*?<tbody>(.*?)</tbody>', html, re.S)
+            if not m:
+                print("  未找到 estimationtable")
+                if attempt < max_retries:
+                    time.sleep(attempt * 3)
+                    continue
+                return {}
 
-        tbody = m.group(1)
-        result = {}
+            tbody = m.group(1)
+            result = {}
 
-        for row_m in re.finditer(r'<tr>(.*?)</tr>', tbody, re.S):
-            cells = re.findall(r'<td[^>]*>(.*?)</td>', row_m.group(1), re.S)
-            if len(cells) < 6:
-                continue
+            for row_m in re.finditer(r'<tr>(.*?)</tr>', tbody, re.S):
+                cells = re.findall(r'<td[^>]*>(.*?)</td>', row_m.group(1), re.S)
+                if len(cells) < 6:
+                    continue
 
-            code_m = re.search(r'>(S[HZ]\d{6})<', cells[0])
-            if not code_m:
-                continue
-            full_code = code_m.group(1)
+                code_m = re.search(r'>(S[HZ]\d{6})<', cells[0])
+                if not code_m:
+                    continue
+                full_code = code_m.group(1)
 
-            est_m = re.search(r'>([\d.]+)<', cells[1])
-            est = float(est_m.group(1)) if est_m else None
+                est_m = re.search(r'>([\d.]+)<', cells[1])
+                est = float(est_m.group(1)) if est_m else None
 
-            date_m = re.search(r'(\d{4}-\d{2}-\d{2})', cells[2])
-            est_date = date_m.group(1) if date_m else None
+                date_m = re.search(r'(\d{4}-\d{2}-\d{2})', cells[2])
+                est_date = date_m.group(1) if date_m else None
 
-            prem_m = re.search(r'>([-\d.]+)', cells[3])
-            premium = float(prem_m.group(1)) if prem_m else None
+                prem_m = re.search(r'>([-\d.]+)', cells[3])
+                premium = float(prem_m.group(1)) if prem_m else None
 
-            ref_premium = None
-            if cells[5].strip():
-                ref_m = re.search(r'>([-\d.]+)', cells[5])
-                ref_premium = float(ref_m.group(1)) if ref_m else None
+                ref_premium = None
+                if cells[5].strip():
+                    ref_m = re.search(r'>([-\d.]+)', cells[5])
+                    ref_premium = float(ref_m.group(1)) if ref_m else None
 
-            result[full_code] = {
-                "est": est,
-                "est_date": est_date,
-                "premium": premium,
-                "ref_premium": ref_premium,
-            }
+                result[full_code] = {
+                    "est": est,
+                    "est_date": est_date,
+                    "premium": premium,
+                    "ref_premium": ref_premium,
+                }
 
-        print(f"  完成：{len(result)} 只")
-        return result
-    except Exception as e:
-        print(f"  溢价获取失败: {e}")
-        return {}
+            print(f"  完成：{len(result)} 只")
+            return result
+        except Exception as e:
+            print(f"  溢价获取失败 (第{attempt}次): {e}")
+            if attempt < max_retries:
+                time.sleep(attempt * 3)
+    print(f"  溢价获取最终失败，已重试{max_retries}次")
+    return {}
 
 
 def fetch_prices():
@@ -206,6 +217,45 @@ def _fetch_quota_page(code6):
             "quota": None,
             "big_quota": None,
         }
+
+
+def fetch_premium_fundgz():
+    """从天天基金fundgz获取估算净值(GSZ)作为palmmicro的备用数据源
+
+    覆盖约20/35只基金（A股、港股相关），QDII海外基金通常无数据
+    返回格式与fetch_premium()一致: {full_code: {est, est_date, premium, ref_premium}}
+    """
+    import json as _json
+
+    print("获取fundgz估算净值（备用源）...")
+    from config import FUNDS
+
+    result = {}
+    for full_code, code6, _name in FUNDS:
+        url = f"https://fundgz.1234567.com.cn/js/{code6}.js"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            r.encoding = "utf-8"
+            m = re.match(r"jsonpgz\((.*)\);", r.text)
+            if not m or not m.group(1).strip():
+                continue
+            data = _json.loads(m.group(1))
+            gsz = data.get("gsz")
+            if not gsz:
+                continue
+            est_date = data.get("gztime", "")[:10]  # "2026-06-29 15:00" → "2026-06-29"
+            result[full_code] = {
+                "est": float(gsz),
+                "est_date": est_date if est_date else None,
+                "premium": None,  # 需要结合price在merge()中计算
+                "ref_premium": None,
+            }
+        except Exception:
+            pass
+        time.sleep(0.1)
+
+    print(f"  完成：{len(result)} 只（fundgz备用源）")
+    return result
 
 
 def fetch_quota():
