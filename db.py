@@ -41,6 +41,8 @@ def init_db():
             premium      REAL,
             est_date     TEXT,
             ref_premium  REAL,
+            dwjz         REAL,
+            dwjz_premium REAL,
             status       TEXT,
             status_text  TEXT,
             quota        REAL,
@@ -89,8 +91,8 @@ def save_premium_batch(rows, date_str):
     for r in rows:
         c.execute(
             """INSERT OR REPLACE INTO premium_history
-               (full_code, date, price, change_pct, est, premium, est_date, ref_premium, status, status_text, quota)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (full_code, date, price, change_pct, est, premium, est_date, ref_premium, dwjz, dwjz_premium, status, status_text, quota)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 r["full_code"],
                 date_str,
@@ -100,6 +102,8 @@ def save_premium_batch(rows, date_str):
                 r.get("premium"),
                 r.get("est_date"),
                 r.get("ref_premium"),
+                r.get("dwjz"),
+                r.get("dwjz_premium"),
                 r.get("status"),
                 r.get("status_text"),
                 r.get("quota"),
@@ -157,7 +161,7 @@ def export_history_csv(filepath="history.csv"):
     c = conn.cursor()
     c.execute(
         """SELECT full_code, date, price, change_pct, est, premium,
-                  est_date, ref_premium, status, status_text, quota
+                  est_date, ref_premium, dwjz, dwjz_premium, status, status_text, quota
            FROM premium_history
            ORDER BY date DESC, premium DESC"""
     )
@@ -169,7 +173,7 @@ def export_history_csv(filepath="history.csv"):
 
     fieldnames = [
         "full_code", "date", "price", "change_pct", "est", "premium",
-        "est_date", "ref_premium", "status", "status_text", "quota",
+        "est_date", "ref_premium", "dwjz", "dwjz_premium", "status", "status_text", "quota",
     ]
     with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

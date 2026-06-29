@@ -21,18 +21,18 @@ def get_dashboard_data():
     # 最新一天的所有基金数据
     c.execute("""
         SELECT full_code, date, price, change_pct, est, premium,
-               est_date, ref_premium, status, status_text, quota
+               est_date, ref_premium, dwjz, dwjz_premium, status, status_text, quota
         FROM premium_history
         WHERE date = (SELECT MAX(date) FROM premium_history)
-        ORDER BY premium DESC
+        ORDER BY COALESCE(dwjz_premium, premium) DESC
     """)
     latest = [dict(row) for row in c.fetchall()]
 
-    # 最近30天每日溢价率（用于趋势图）
+    # 最近30天每日溢价率（用于趋势图 — 使用 DWJZ 溢价率优先）
     c.execute("""
-        SELECT full_code, date, premium
+        SELECT full_code, date, COALESCE(dwjz_premium, premium) as display_premium
         FROM premium_history
-        WHERE premium IS NOT NULL
+        WHERE (premium IS NOT NULL OR dwjz_premium IS NOT NULL)
           AND date >= date('now', '-30 days')
         ORDER BY full_code, date
     """)
@@ -59,22 +59,31 @@ def generate_html(latest, history, names):
         if h["full_code"] in top_codes:
             trend_data.setdefault(h["full_code"], []).append({
                 "date": h["date"],
-                "premium": h["premium"],
+                "premium": h["display_premium"],
             })
 
-    # 统计
-    arb_count = sum(1 for r in latest if (r["premium"] or 0) > 0 and r["status"] in ("open", "limited"))
-    closed_count = sum(1 for r in latest if (r["premium"] or 0) > 0 and r["status"] not in ("open", "limited"))
-    max_prem = max((r["premium"] for r in latest if r["premium"] is not None), default=0)
+    # 统计（使用 DWJZ 溢价率优先）
+    def get_effective_prem(r):
+        return r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
+
+    arb_count = sum(1 for r in latest if (get_effective_prem(r) or 0) > 0 and r["status"] in ("open", "limited"))
+    closed_count = sum(1 for r in latest if (get_effective_prem(r) or 0) > 0 and r["status"] not in ("open", "limited"))
+    max_prem = max((get_effective_prem(r) for r in latest if get_effective_prem(r) is not None), default=0)
 
     # 表格行
     table_rows = ""
     for i, r in enumerate(latest, 1):
-        prem = r["premium"]
+        prem = r.get("dwjz_premium")  # 优先显示 DWJZ 溢价率
+        est_prem = r.get("premium")  # EST 溢价率（备用）
+        if prem is None:
+            prem = est_prem
         name = names.get(r["full_code"], r["full_code"])
         price_s = f"{r['price']:.3f}" if r.get("price") else "—"
         change_s = f"{r['change_pct']:+.2f}%" if r.get("change_pct") is not None else "—"
         est_s = f"{r['est']:.3f}" if r.get("est") else "—"
+        # DWJZ 净值列
+        dwjz = r.get("dwjz")
+        dwjz_s = f"{dwjz:.4f}" if dwjz else "—"
         quota = r.get("quota")
         quota_s = "无限制" if not quota else (f"{quota/1e8:.0f}亿" if quota >= 1e8 else f"{quota/1e4:.0f}万" if quota >= 1e4 else f"{quota:.0f}元")
 
@@ -91,6 +100,14 @@ def generate_html(latest, history, names):
             prem_class = "negative"
             prem_s = f"{prem:.2f}%"
 
+        # EST 溢价率（参考列）
+        if est_prem is None:
+            est_prem_s = "—"
+        elif est_prem > 0:
+            est_prem_s = f"+{est_prem:.2f}%"
+        else:
+            est_prem_s = f"{est_prem:.2f}%"
+
         status_class = {"open": "open", "limited": "limited", "closed": "closed"}.get(r.get("status", ""), "")
 
         table_rows += f"""
@@ -100,6 +117,7 @@ def generate_html(latest, history, names):
                 <td>{price_s}</td>
                 <td>{change_s}</td>
                 <td>{est_s}</td>
+                <td>{dwjz_s}</td>
                 <td class="{prem_class}">{prem_s}</td>
                 <td class="{status_class}">{r.get('status_text', '—')}</td>
                 <td>{quota_s}</td>
@@ -161,7 +179,7 @@ footer {{ text-align:center; color:#64748b; margin-top:24px; font-size:12px; }}
 <div class="stats">
     <div class="stat-card"><div class="value red">{arb_count}</div><div class="label">套利机会</div></div>
     <div class="stat-card"><div class="value yellow">{closed_count}</div><div class="label">溢价但暂停申购</div></div>
-    <div class="stat-card"><div class="value {'red' if max_prem > 5 else 'yellow'}">{max_prem:+.2f}%</div><div class="label">最高溢价率</div></div>
+    <div class="stat-card"><div class="value {'red' if max_prem > 5 else 'yellow'}">{max_prem:+.2f}%</div><div class="label">最高净值溢价率</div></div>
     <div class="stat-card"><div class="value green">{len(latest)}</div><div class="label">监控基金数</div></div>
 </div>
 
@@ -169,9 +187,14 @@ footer {{ text-align:center; color:#64748b; margin-top:24px; font-size:12px; }}
     <div id="trend-chart" style="height:360px;"></div>
 </div>
 
+<p style="color:#64748b;font-size:12px;margin-bottom:16px;text-align:center;">
+    💡 净值溢价率 = (市价 - 昨收净值) / 昨收净值 × 100% — LOF申购套利核心指标<br>
+    昨收净值数据来自天天基金，仅约 60% LOF 可用；无数据时回退到 EST 溢价率
+</p>
+
 <table>
 <thead>
-<tr><th>#</th><th>基金</th><th>现价</th><th>涨跌</th><th>EST</th><th>溢价率</th><th>状态</th><th>限额</th></tr>
+<tr><th>#</th><th>基金</th><th>现价</th><th>涨跌</th><th>EST</th><th>昨收净值</th><th>净值溢价率</th><th>状态</th><th>限额</th></tr>
 </thead>
 <tbody>
 {table_rows}

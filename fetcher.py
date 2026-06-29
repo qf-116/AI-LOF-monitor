@@ -258,6 +258,46 @@ def fetch_premium_fundgz():
     return result
 
 
+def fetch_nav_data():
+    """从天天基金fundgz获取昨收净值(DWJZ)和估算净值(GSZ)
+
+    用于计算 DWJZ 溢价率（LOF套利的关键指标）：
+    dwjz_premium = (市价 - DWJZ) / DWJZ * 100
+
+    返回: {full_code: {dwjz, gsz, gszzl, gztime}}
+    """
+    import json as _json
+
+    print("获取昨收净值(DWJZ)...")
+    from config import FUNDS
+
+    result = {}
+    for full_code, code6, _name in FUNDS:
+        url = f"https://fundgz.1234567.com.cn/js/{code6}.js"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            r.encoding = "utf-8"
+            m = re.match(r"jsonpgz\((.*)\);", r.text)
+            if not m or not m.group(1).strip():
+                continue
+            data = _json.loads(m.group(1))
+            dwjz = data.get("dwjz")
+            if not dwjz:
+                continue
+            result[full_code] = {
+                "dwjz": float(dwjz),
+                "gsz": float(data["gsz"]) if data.get("gsz") else None,
+                "gszzl": data.get("gszzl"),
+                "gztime": data.get("gztime"),
+            }
+        except Exception:
+            pass
+        time.sleep(0.1)
+
+    print(f"  完成：{len(result)} 只（昨收净值）")
+    return result
+
+
 def fetch_quota():
     """获取所监控基金的申购状态和限额"""
     print("获取限购状态...")

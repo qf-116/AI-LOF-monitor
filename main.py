@@ -14,7 +14,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from config import FUNDS, ALERT_THRESHOLD, load_dotenv, get_serverchan_key
 from db import init_db, upsert_fund_info, save_premium_batch, save_alert
-from fetcher import fetch_premium, fetch_prices, fetch_quota, fetch_premium_fundgz
+from fetcher import fetch_premium, fetch_prices, fetch_quota, fetch_premium_fundgz, fetch_nav_data
 from calculator import merge, check_alerts
 from notifier import send_wechat, build_alert_message, build_daily_summary
 
@@ -253,6 +253,8 @@ def main():
     price_map = fetch_prices()
     time.sleep(0.5)
     quota_map = fetch_quota()
+    time.sleep(0.5)
+    nav_map = fetch_nav_data()
 
     # palmmicro数据不完整时，启用fundgz备用源补充
     fundgz_map = None
@@ -260,7 +262,7 @@ def main():
     if est_missing > 0:
         print(f"  palmmicro缺失 {est_missing} 只基金EST数据，启用fundgz备用源...")
         fundgz_map = fetch_premium_fundgz()
-    rows = merge(premium_map, price_map, quota_map, fundgz_map)
+    rows = merge(premium_map, price_map, quota_map, fundgz_map, nav_map)
 
     # ── 本地调试模式 ──
     if args.local:
