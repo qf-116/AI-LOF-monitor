@@ -66,8 +66,9 @@ def generate_html(latest, history, names):
     def get_effective_prem(r):
         return r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
 
-    arb_count = sum(1 for r in latest if (get_effective_prem(r) or 0) > 0 and r["status"] in ("open", "limited"))
-    closed_count = sum(1 for r in latest if (get_effective_prem(r) or 0) > 0 and r["status"] not in ("open", "limited"))
+    from config import ALERT_THRESHOLD
+    arb_count = sum(1 for r in latest if (get_effective_prem(r) or 0) >= ALERT_THRESHOLD and r["status"] in ("open", "limited"))
+    closed_count = sum(1 for r in latest if (get_effective_prem(r) or 0) >= ALERT_THRESHOLD and r["status"] not in ("open", "limited"))
     max_prem = max((get_effective_prem(r) for r in latest if get_effective_prem(r) is not None), default=0)
 
     # 表格行
@@ -177,7 +178,7 @@ footer {{ text-align:center; color:#64748b; margin-top:24px; font-size:12px; }}
 </div>
 
 <div class="stats">
-    <div class="stat-card"><div class="value red">{arb_count}</div><div class="label">套利机会</div></div>
+    <div class="stat-card"><div class="value red">{arb_count}</div><div class="label">预警中(≥{ALERT_THRESHOLD:.0f}%)</div></div>
     <div class="stat-card"><div class="value yellow">{closed_count}</div><div class="label">溢价但暂停申购</div></div>
     <div class="stat-card"><div class="value {'red' if max_prem > 5 else 'yellow'}">{max_prem:+.2f}%</div><div class="label">最高净值溢价率</div></div>
     <div class="stat-card"><div class="value green">{len(latest)}</div><div class="label">监控基金数</div></div>

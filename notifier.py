@@ -46,11 +46,12 @@ def build_alert_message(alert_rows, now_str):
     lines = [f"## LOF 溢价预警 · {now_str}", ""]
     lines.append(f"以下基金溢价率超过阈值，存在套利机会：", )
     lines.append("")
-    lines.append("| 基金 | 溢价率 | 限额 | 状态 |")
-    lines.append("|------|--------|------|------|")
+    lines.append("| 基金 | 净值溢价率 | 限额 | 状态 |")
+    lines.append("|------|-----------|------|------|")
     for r in alert_rows:
-        prem = r["premium"]
-        sign = "+" if prem > 0 else ""
+        # 使用有效溢价率（DWJZ优先）
+        prem = r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
+        sign = "+" if (prem or 0) > 0 else ""
         lines.append(
             f"| {r['name']} `{r['full_code']}` "
             f"| **{sign}{prem:.2f}%** "
@@ -69,8 +70,11 @@ def build_daily_summary(rows, now_str):
     """构建每日汇总推送消息"""
     today = datetime.now().strftime("%Y-%m-%d")
 
+    def get_effective_prem(r):
+        return r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
+
     def prem_cell(r, bold=True):
-        prem = r["premium"]
+        prem = get_effective_prem(r)
         if prem is None:
             return "—"
         sign = "+" if prem > 0 else ""
@@ -92,9 +96,9 @@ def build_daily_summary(rows, now_str):
     )
 
     arb = [
-        r for r in rows if (r["premium"] or 0) > 0 and r["status"] in ("open", "limited")
+        r for r in rows if (get_effective_prem(r) or 0) > 0 and r["status"] in ("open", "limited")
     ]
-    all_pos = [r for r in rows if (r["premium"] or 0) > 0]
+    all_pos = [r for r in rows if (get_effective_prem(r) or 0) > 0]
 
     title = f"LOF溢价提醒 {now_str}｜{len(arb)}只套利机会"
     if not arb:
@@ -111,8 +115,8 @@ def build_daily_summary(rows, now_str):
     if arb:
         lines.append(f"### ⚡ 套利机会（{len(arb)}只）")
         lines.append("")
-        lines.append("| 基金 | 溢价 | 限额 | 状态 |")
-        lines.append("|------|------|------|------|")
+        lines.append("| 基金 | 净值溢价 | 限额 | 状态 |")
+        lines.append("|------|---------|------|------|")
         for r in arb:
             lines.append(
                 f"| {r['name']} `{r['full_code']}` "
@@ -134,14 +138,14 @@ def build_daily_summary(rows, now_str):
             lines.append("")
             for r in closed_pos:
                 lines.append(
-                    f"- {r['name']} `{r['full_code']}` 溢价 {prem_cell(r, bold=False)} · {r['status_text']}"
+                    f"- {r['name']} `{r['full_code']}` 净值溢价 {prem_cell(r, bold=False)} · {r['status_text']}"
                 )
             lines.append("")
 
-    lines.append("### 📊 溢价率排行（前10）")
+    lines.append("### 📊 净值溢价率排行（前10）")
     lines.append("")
-    lines.append("| 排名 | 基金 | 溢价率 | 限额 |")
-    lines.append("|------|------|--------|------|")
+    lines.append("| 排名 | 基金 | 净值溢价率 | 限额 |")
+    lines.append("|------|------|-----------|------|")
     for i, r in enumerate(rows[:10], 1):
         lines.append(
             f"| {i} | {r['name']} | {prem_cell(r, bold=False)} | {_fmt_money(r['quota'])} |"

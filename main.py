@@ -284,7 +284,8 @@ def main():
             if sendkey:
                 send_wechat(title, content, sendkey)
                 for r in alert_rows:
-                    save_alert(r["full_code"], date_str, r["premium"], ALERT_THRESHOLD)
+                    effective_prem = r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
+                    save_alert(r["full_code"], date_str, effective_prem, ALERT_THRESHOLD)
             else:
                 print("⚠️  未设置 SERVERCHAN_KEY，跳过推送")
         else:
@@ -301,7 +302,8 @@ def main():
         alert_title, alert_content = build_alert_message(alert_rows, now_str)
         send_wechat(alert_title, alert_content, sendkey)
         for r in alert_rows:
-            save_alert(r["full_code"], date_str, r["premium"], ALERT_THRESHOLD)
+            effective_prem = r.get("dwjz_premium") if r.get("dwjz_premium") is not None else r.get("premium")
+            save_alert(r["full_code"], date_str, effective_prem, ALERT_THRESHOLD)
 
     # 发送每日汇总
     title, content = build_daily_summary(rows, now_str)
