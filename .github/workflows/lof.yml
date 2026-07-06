@@ -3,7 +3,7 @@ name: LOF溢价监控
 on:
   schedule:
     - cron: '30 3 * * 1-5'   # 北京时间 11:30 盘中预警
-    - cron: '30 7 * * 1-5'   # 北京时间 15:30 每日汇总
+    - cron: '30 6 * * 1-5'   # 北京时间 14:30 每日汇总（A股15:00收盘前）
   workflow_dispatch:
   repository_dispatch:
     types: [manual_trigger]
@@ -33,7 +33,7 @@ jobs:
         run: python main.py --alert
 
   daily:
-    if: github.event.schedule == '30 7 * * 1-5' || github.event_name != 'schedule'
+    if: github.event.schedule == '30 6 * * 1-5' || github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: 检出仓库
