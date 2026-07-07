@@ -1,6 +1,6 @@
 # LOF溢价监控 - Windows计划任务注册脚本
 # 以管理员权限运行此脚本，注册每日定时任务
-# 11:30 盘中预警 | 15:30 每日汇总
+# 11:30 盘中预警 | 14:30 每日汇总（A股15:00收盘前）
 
 $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PythonExe = (Get-Command python).Source
@@ -15,7 +15,7 @@ $tasks = @(
     },
     @{
         Name = "LOF溢价监控_每日汇总"
-        Time = "15:30"
+        Time = "14:30"
         Args = "--daily"
         Desc = "LOF基金溢价每日汇总推送"
     }
